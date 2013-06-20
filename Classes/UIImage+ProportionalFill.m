@@ -11,7 +11,7 @@
 @implementation UIImage (MGProportionalFill)
 
 
-- (UIImage *)imageToFitSize:(CGSize)fitSize method:(MGImageResizingMethod)resizeMethod
+- (UIImage *)imageToFitSize:(CGSize)fitSize method:(MGImageResizingMethod)resizeMethod ignoreAlpha:(BOOL)opaque
 {
 	float imageScaleFactor = 1.0;
 #if __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_4_0
@@ -93,7 +93,7 @@
 #if __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_4_0
 	CGImageRef sourceImg = nil;
 	if ([UIScreen instancesRespondToSelector:@selector(scale)]) {
-		UIGraphicsBeginImageContextWithOptions(destRect.size, NO, 0.f); // 0.f for scale means "scale for device's main screen".
+		UIGraphicsBeginImageContextWithOptions(destRect.size, opaque, 0.f); // 0.f for scale means "scale for device's main screen".
 		sourceImg = CGImageCreateWithImageInRect([self CGImage], sourceRect); // cropping happens here.
 		image = [UIImage imageWithCGImage:sourceImg scale:0.0 orientation:self.imageOrientation]; // create cropped UIImage.
 		
@@ -112,8 +112,12 @@
 	if (!image) {
 		// Try older method.
 		CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+        CGBitmapInfo bitmapInfo = kCGImageAlphaPremultipliedLast;
+        if (opaque) {
+            bitmapInfo = kCGImageAlphaNoneSkipLast;
+        }
 		CGContextRef context = CGBitmapContextCreate(NULL, scaledWidth, scaledHeight, 8, (scaledWidth * 4), 
-													 colorSpace, kCGImageAlphaPremultipliedLast);
+													 colorSpace, bitmapInfo);
 		CGImageRef sourceImg = CGImageCreateWithImageInRect([self CGImage], sourceRect);
 		CGContextDrawImage(context, destRect, sourceImg);
 		CGImageRelease(sourceImg);
@@ -127,16 +131,29 @@
 	return image;
 }
 
-
-- (UIImage *)imageCroppedToFitSize:(CGSize)fitSize
+- (UIImage *)imageToFitSize:(CGSize)size method:(MGImageResizingMethod)resizeMethod
 {
-	return [self imageToFitSize:fitSize method:MGImageResizeCrop];
+    return [self imageToFitSize:size method:resizeMethod ignoreAlpha:NO];
 }
 
+- (UIImage *)imageCroppedToFitSize:(CGSize)fitSize ignoreAlpha:(BOOL)opaque
+{
+	return [self imageToFitSize:fitSize method:MGImageResizeCrop ignoreAlpha:opaque];
+}
+
+- (UIImage *)imageCroppedToFitSize:(CGSize)size
+{
+    return [self imageCroppedToFitSize:size ignoreAlpha:NO];
+}
+
+- (UIImage *)imageScaledToFitSize:(CGSize)fitSize ignoreAlpha:(BOOL)opaque
+{
+	return [self imageToFitSize:fitSize method:MGImageResizeScale ignoreAlpha:opaque];
+}
 
 - (UIImage *)imageScaledToFitSize:(CGSize)fitSize
 {
-	return [self imageToFitSize:fitSize method:MGImageResizeScale];
+    return [self imageScaledToFitSize:fitSize ignoreAlpha:NO];
 }
 
 
